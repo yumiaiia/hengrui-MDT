@@ -1,0 +1,35 @@
+/* 恒瑞IMDT 设计令牌（提取自 UI 设计图） */
+:root{
+  --bg-page:#F7F7F5;
+  --bg-card:#FDFDFD;
+  --bg-card-2:#FFFFFF;
+  --primary:#1B5449;
+  --primary-hover:#236558;
+  --primary-dark:#143834;
+  --primary-mid:#1C9876;
+  --mint:#E6F2EE;
+  --mint-2:#EBF5F2;
+  --text-main:#0F2B2F;
+  --text-sub:#5E7370;
+  --text-faint:#9AA8A5;
+  --border:#E3EAE7;
+  --border-strong:#D3DEDA;
+  --danger:#C0503D;
+  --danger-bg:#FBEFEC;
+  --warn:#B7791F;
+  --warn-bg:#FBF3E4;
+  --ok:#1C9876;
+  --trend-up:#C0503D;
+  --trend-down:#B7791F;
+  --trend-flat:#9AA8A5;
+  --camera-bg:#0F1C2C;
+  --radius-lg:20px;
+  --radius-md:16px;
+  --radius-sm:12px;
+  --radius-xs:10px;
+  --radius-pill:999px;
+  --shadow-card:0 2px 12px rgba(15,43,47,.06);
+  --shadow-pop:0 8px 32px rgba(15,43,47,.14);
+  --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+  --mono:"SF Mono",Menlo,Consolas,"PingFang SC",monospace;
+}

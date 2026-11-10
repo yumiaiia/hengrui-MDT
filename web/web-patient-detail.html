@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>患者详情 · 恒瑞IMDT 医生门户</title>
+<link rel="stylesheet" href="../assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/pages.css?v=20261109">
+</head>
+<body class="web-shell">
+<header class="web-topbar">
+  <div class="brand"><span class="logo-mark"></span><span class="name">恒瑞IMDT</span></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="spacer"></div>
+  <div class="user-box">
+    <span class="tag tag-doctor" id="tb-role">医生</span>
+    <span class="user-name" id="tb-user">—</span>
+    <a href="javascript:void(0)" class="logout-link" id="tb-logout">退出登录</a>
+  </div>
+</header>
+
+<main class="web-main">
+  <a href="web-patients.html" class="web-back">← 返回患者列表</a>
+
+  <div class="card detail-head-card">
+    <div class="dh-main">
+      <div class="dh-code" id="dh-code">—</div>
+      <div class="dh-meta" id="dh-meta">—</div>
+      <div class="dh-chips" id="dh-chips"></div>
+    </div>
+    <div class="dh-side">
+      <span id="dh-status"></span>
+      <div class="dh-update" id="dh-update">—</div>
+    </div>
+  </div>
+
+  <div class="card" id="detail-card">
+    <!-- 分析中：进度视图 -->
+    <div id="progress-view" style="display:none">
+      <div style="text-align:center;padding:26px 0 8px">
+        <div class="big-percent"><span id="percent">0</span>%</div>
+        <div style="font-size:13px;color:var(--text-sub);font-weight:600;margin-top:2px" id="percent-label">结构化解析中</div>
+        <div style="font-size:12.5px;color:var(--text-faint);margin-top:8px">分析完成后将自动展示 MDT 结果内容</div>
+      </div>
+      <div style="max-width:560px;margin:20px auto 26px" class="progress-steps" id="steps"></div>
+    </div>
+
+    <!-- 已完成：三个内容 Tab -->
+    <div id="tabs-view" style="display:none">
+      <div class="tab-bar" id="tab-bar">
+        <span class="tb active" data-tab="timeline">疾病进展</span>
+        <span class="tb" data-tab="mdt">MDT 建议</span>
+        <span class="tb" data-tab="systems">多系统累及</span>
+      </div>
+      <div class="tab-panel" data-panel="timeline">
+        <div class="tp-head"><span class="t">疾病进展时间线</span><span class="s">按时间轴展示诊疗进展</span></div>
+        <div class="timeline" id="timeline"></div>
+      </div>
+      <div class="tab-panel" data-panel="mdt" style="display:none">
+        <div class="tp-head"><span class="t">MDT 建议</span><span class="s">多学科协同形成的诊疗建议</span></div>
+        <div id="mdt-body"></div>
+      </div>
+      <div class="tab-panel" data-panel="systems" style="display:none">
+        <div class="tp-head"><span class="t">多系统累及</span><span class="s">各系统相关指标与变化方向</span></div>
+        <div id="systems-body"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../assets/js/seed-data.js?v=20261109"></script>
+<script src="../assets/js/store.js?v=20261109"></script>
+<script src="../assets/js/app.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp, S = window.HRStore;
+  var user = A.guard('web');
+  if (!user) return;
+  A.webChrome(user, 'patients');
+
+  var id = A.getParam('id');
+  var patient = id ? S.getPatientById(id) : null;
+  if (!patient || patient.creatorId !== user.id) {
+    A.toast('无权查看该患者', 'error');
+    setTimeout(function () { location.replace('web-patients.html'); }, 600);
+    return;
+  }
+
+  var DEPT_ICONS = { '心内科': 'heart', '肾病科': 'kidney', '肿瘤科': 'tumor', '影像科': 'scan' };
+  var SYS_ICONS = { '肺与呼吸': 'lung', '血液系统': 'blood', '电解质': 'bolt', '肝脏与营养': 'liver', '心血管系统': 'heart', '肾脏功能': 'kidney' };
+  var TREND = { up: { arr: '▲', cls: 'up' }, down: { arr: '▼', cls: 'down' }, flat: { arr: '●', cls: 'flat' } };
+
+  /* ---------- 头部卡 ---------- */
+  function renderHead(p) {
+    document.getElementById('dh-code').textContent = p.code;
+    document.getElementById('dh-meta').textContent =
+      (p.gender ? p.gender : '—') + (p.age ? ' · ' + p.age + '岁' : '') + ' · 材料 ' + p.materials.length + ' 份';
+    document.getElementById('dh-chips').innerHTML =
+      '<span class="tag tag-gray">' + A.esc(p.disease) + '</span>' +
+      (p.isSample ? '<span class="tag tag-doctor">示例病例</span>' : '');
+    document.getElementById('dh-status').innerHTML = A.statusTag(p);
+    document.getElementById('dh-update').textContent = '更新于 ' + p.updatedAt;
+  }
+
+  /* ---------- 进度视图 ---------- */
+  var percent = Math.max(10, (patient.progressStep - 1) * 25);
+  var percentTimer = null;
+
+  function renderSteps(p) {
+    var steps = A.PROGRESS_STEPS;
+    document.getElementById('steps').innerHTML = steps.map(function (s, i) {
+      var n = i + 1;
+      var cls = n <= p.progressStep ? 'done' : (n === p.progressStep + 1 && p.status !== 'completed' ? 'active' : '');
+      var dot = n <= p.progressStep ? A.I.check(14) : n;
+      return '<div class="p-step ' + cls + '">' +
+        '<div class="p-rail"><div class="p-dot">' + dot + '</div>' + (n < 4 ? '<div class="p-line"></div>' : '') + '</div>' +
+        '<div class="p-body"><div class="pt">' + s.name + '</div><div class="pd">' + s.desc + '</div></div></div>';
+    }).join('');
+    var done = p.status === 'completed';
+    document.getElementById('percent').textContent = done ? 100 : Math.min(96, Math.round(percent));
+    document.getElementById('percent-label').textContent = done ? '分析完成' : (p.progressStep === 2 ? '结构化解析中' : (p.progressStep === 3 ? 'MDT 分析中' : '处理中'));
+  }
+
+  function startPercentLoop() {
+    if (percentTimer) return;
+    percentTimer = setInterval(function () {
+      var p = S.getPatientById(patient.id);
+      var cap = p.status === 'completed' ? 100 : p.progressStep * 25;
+      if (percent < cap) percent = Math.min(cap, percent + 3 + Math.random() * 4);
+      document.getElementById('percent').textContent = Math.round(percent);
+    }, 380);
+  }
+
+  /* ---------- Tab 内容 ---------- */
+  function renderTimeline(p) {
+    document.getElementById('timeline').innerHTML = (p.timeline || []).map(function (t) {
+      return '<div class="tl-item">' +
+        '<div class="tl-rail"><div class="tl-dot"></div><div class="tl-line"></div></div>' +
+        '<div class="tl-body">' +
+        '<div class="tl-date">' + A.esc(t.date) + '</div>' +
+        '<div class="tl-head"><span class="tl-title">' + A.esc(t.title) + '</span><span class="tl-tag">' + A.esc(t.tag) + '</span></div>' +
+        '<div class="tl-desc">' + A.esc(t.desc) + '</div></div></div>';
+    }).join('') || '<div class="empty-state" style="padding:36px 20px"><div class="es-t">暂无进展记录</div></div>';
+  }
+
+  function renderMdt(p) {
+    var r = p.result;
+    var html = '';
+    if (!r) {
+      html = '<div class="empty-state" style="padding:36px 20px"><div class="es-ic">' + A.I.doc(26) + '</div><div class="es-t">暂无分析结果</div><div class="es-s">请稍后刷新查看</div></div>';
+    } else {
+      html += '<div class="focus-block">' +
+        '<div class="fb-t">MDT 综合建议</div>' +
+        '<div class="fb-text">' + A.esc(r.overall) + '</div>' +
+        '<div class="fb-chips">' + (r.keyPoints || []).map(function (k) {
+          return '<span class="kp">' + A.esc(k.k) + (k.sub ? '<span class="sub">' + A.esc(k.sub) + '</span>' : '') + '</span>';
+        }).join('') + '</div></div>';
+      html += (r.departments || []).map(function (d) {
+        var ic = DEPT_ICONS[d.name] || 'dept';
+        return '<div class="accordion">' +
+          '<div class="acc-head"><span class="acc-ic">' + A.I[ic](16) + '</span>' +
+          '<div class="acc-t"><div class="at">' + A.esc(d.name) + '建议</div><div class="as">' + A.esc(d.summary) + '</div></div>' +
+          '<span class="acc-arrow">' + A.I.arrowR(16) + '</span></div>' +
+          '<div class="acc-body">' + (d.points || []).map(function (pt) {
+            return '<div class="ab-row"><div class="ab-label">' + A.esc(pt.label) + '</div><div class="ab-text">' + A.esc(pt.text) + '</div></div>';
+          }).join('') + '</div></div>';
+      }).join('');
+      html += '<div class="disclaimer"><span>' + A.I.info(15) + '</span><span>' + A.esc(r.disclaimer || '内容仅供医生参考，最终方案以临床评估为准') + '</span></div>';
+    }
+    document.getElementById('mdt-body').innerHTML = html;
+    document.querySelectorAll('#mdt-body .acc-head').forEach(function (h) {
+      h.addEventListener('click', function () { h.parentElement.classList.toggle('open'); });
+    });
+  }
+
+  function renderSystems(p) {
+    var systems = p.systems || [];
+    if (!systems.length) {
+      document.getElementById('systems-body').innerHTML = '<div class="empty-state" style="padding:36px 20px"><div class="es-t">暂无多系统累及数据</div><div class="es-s">分析完成后如有相关指标将在此展示</div></div>';
+      return;
+    }
+    var html = '<div class="sys-grid">' + systems.map(function (s) {
+      var ic = SYS_ICONS[s.system] || 'info';
+      return '<div class="sys-card">' +
+        '<div class="sys-h"><span class="sys-ic">' + A.I[ic](15) + '</span>' + A.esc(s.system) + '</div>' +
+        '<div class="sys-note">' + A.esc(s.note || '') + '</div>' +
+        (s.metrics || []).map(function (m) {
+          var t = TREND[m.trend] || TREND.flat;
+          return '<div class="metric-row"><span class="m-name">' + A.esc(m.name) + '</span>' +
+            '<span class="m-val ' + t.cls + '">' + A.esc(m.value) + (m.unit ? ' ' + A.esc(m.unit) : '') + '<span class="arr">' + t.arr + '</span></span></div>';
+        }).join('') + '</div>';
+    }).join('') + '</div>' +
+      '<div class="sys-legend"><span class="up">▲ 上升</span><span class="down">▼ 下降</span><span>● 平稳</span></div>';
+    document.getElementById('systems-body').innerHTML = html;
+  }
+
+  /* ---------- Tab 切换 ---------- */
+  document.querySelectorAll('#tab-bar .tb').forEach(function (tb) {
+    tb.addEventListener('click', function () {
+      document.querySelectorAll('#tab-bar .tb').forEach(function (x) { x.classList.remove('active'); });
+      tb.classList.add('active');
+      var name = tb.getAttribute('data-tab');
+      document.querySelectorAll('.tab-panel').forEach(function (p) {
+        p.style.display = p.getAttribute('data-panel') === name ? 'block' : 'none';
+      });
+    });
+  });
+
+  /* ---------- 视图装配 ---------- */
+  function showTabs(p) {
+    if (percentTimer) { clearInterval(percentTimer); percentTimer = null; }
+    document.getElementById('progress-view').style.display = 'none';
+    document.getElementById('tabs-view').style.display = 'block';
+    renderTimeline(p);
+    renderMdt(p);
+    renderSystems(p);
+  }
+
+  function showProgress(p) {
+    document.getElementById('progress-view').style.display = 'block';
+    document.getElementById('tabs-view').style.display = 'none';
+    renderSteps(p);
+    startPercentLoop();
+    A.runProgressSimulation(p.id, {
+      onUpdate: renderSteps,
+      onDone: function (done) {
+        percent = 100;
+        renderSteps(done);
+        renderHead(done);
+        A.toast('MDT 分析完成，结果已生成', 'success');
+        setTimeout(function () { showTabs(done); }, 500);
+      }
+    });
+  }
+
+  renderHead(patient);
+  if (patient.status === 'completed') showTabs(patient);
+  else showProgress(patient);
+})();
+</script>
+</body>
+</html>

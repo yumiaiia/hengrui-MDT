@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>患者列表 · 恒瑞IMDT</title>
+<link rel="stylesheet" href="../assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/pages.css?v=20261109">
+</head>
+<body>
+<div class="mobile-shell">
+  <div class="app-topbar">
+    <span style="width:40px"></span>
+    <div class="brand-name"><span class="logo-mark"></span>恒瑞IMDT</div>
+    <div class="brand-sub">汇聚专业 • 共筑更好治疗</div>
+  </div>
+
+  <div class="doc-greet">
+    <div class="g1" id="greet-name">您好</div>
+    <div class="g2">持续跟进每一位患者的诊疗</div>
+  </div>
+
+  <div class="create-cta">
+    <button class="btn btn-primary btn-block" id="create-btn">＋ 创建患者</button>
+  </div>
+
+  <div class="patient-cards">
+    <div class="search-bar">
+      <span class="s-ic" id="search-ic"></span>
+      <input id="search-input" type="text" placeholder="搜索患者编号">
+    </div>
+    <div class="chip-row" id="status-chips">
+      <button class="chip active" data-v="all">全部</button>
+      <button class="chip" data-v="analyzing">分析中</button>
+      <button class="chip" data-v="completed">已完成</button>
+    </div>
+    <div id="list" style="margin-top:12px"></div>
+    <div class="count-note" id="count-note"></div>
+  </div>
+
+  <nav class="bottom-tabbar">
+    <a href="user-patients.html" class="active"><span class="tab-icon" data-ic="folder"></span>患者</a>
+    <a href="user-profile.html"><span class="tab-icon" data-ic="users"></span>我的</a>
+  </nav>
+</div>
+
+<script src="../assets/js/seed-data.js?v=20261109"></script>
+<script src="../assets/js/store.js?v=20261109"></script>
+<script src="../assets/js/app.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp, S = window.HRStore;
+  var user = A.guard();
+  if (!user) return;
+
+  document.getElementById('search-ic').innerHTML = A.I.search(18);
+  document.querySelectorAll('.tab-icon').forEach(function (el) {
+    el.innerHTML = A.I[el.getAttribute('data-ic')](22);
+  });
+  document.getElementById('greet-name').textContent = '您好，' + user.name + ' 医生';
+
+  var filter = { q: '', status: 'all' };
+
+  function render() {
+    var list = S.listPatientsByCreator(user.id);
+    if (filter.q) {
+      var q = filter.q.toLowerCase();
+      list = list.filter(function (p) {
+        return p.code.toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    if (filter.status !== 'all') list = list.filter(function (p) { return p.status === filter.status; });
+
+    var box = document.getElementById('list');
+    if (!list.length) {
+      box.innerHTML =
+        '<div class="card card-pad empty-state" style="padding:42px 20px">' +
+        '<div class="es-ic">' + A.I.folder(26) + '</div>' +
+        '<div class="es-t">' + (filter.q || filter.status !== 'all' ? '没有符合条件的患者' : '暂无患者档案') + '</div>' +
+        '<div class="es-s">' + (filter.q || filter.status !== 'all' ? '试试调整搜索或筛选条件' : '点击"创建患者"开始第一次 MDT 分析') + '</div></div>';
+    } else {
+      box.innerHTML = list.map(function (p) {
+        return '<a class="p-card" data-id="' + p.id + '">' +
+          '<div class="pc-top"><span class="pc-age">' + A.esc(p.gender ? p.gender + ' · ' : '') + (p.age ? p.age + '岁' : '') + '</span>' +
+          '<span class="pc-right">' + A.statusTag(p) + '</span></div>' +
+          '<div class="pc-chips"><span class="mono-chip">' + A.esc(p.code) + '</span>' +
+          '<span class="tag tag-gray">' + A.esc(p.disease) + '</span></div>' +
+          '<div class="pc-foot"><span>材料 ' + p.materials.length + ' 份</span><span>更新于 ' + A.esc(p.updatedAt) + '</span></div>' +
+          '</a>';
+      }).join('');
+      box.querySelectorAll('.p-card').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var p = S.getPatientById(el.getAttribute('data-id'));
+          location.href = (p.status === 'completed' ? 'user-patient-result.html' : 'user-patient-progress.html') + '?id=' + p.id;
+        });
+      });
+    }
+    document.getElementById('count-note').textContent = '共 ' + list.length + ' 位患者';
+  }
+
+  document.getElementById('search-input').addEventListener('input', function () {
+    filter.q = this.value.trim(); render();
+  });
+  document.querySelectorAll('#status-chips .chip').forEach(function (c) {
+    c.addEventListener('click', function () {
+      document.querySelectorAll('#status-chips .chip').forEach(function (x) { x.classList.remove('active'); });
+      c.classList.add('active');
+      filter.status = c.getAttribute('data-v'); render();
+    });
+  });
+  document.getElementById('create-btn').addEventListener('click', function () {
+    location.href = 'user-patient-create.html';
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

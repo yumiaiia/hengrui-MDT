@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>登录 · 恒瑞IMDT 医生门户</title>
+<link rel="stylesheet" href="../assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/pages.css?v=20261109">
+</head>
+<body class="web-auth-body">
+<div class="web-auth-card">
+  <div class="wa-brand">
+    <span class="logo-mark"></span>
+    <span class="t1">恒瑞IMDT</span>
+    <span class="t2">汇聚专业 · 守护更多可能</span>
+  </div>
+  <div class="wa-title" id="wa-title">医生登录</div>
+  <div class="wa-sub" id="wa-sub">Web 端 · 医生门户</div>
+
+  <!-- 第 1 步：手机号验证码（已注册登录 / 未注册进入下一步） -->
+  <div id="step1">
+    <form id="login-form" novalidate>
+      <div class="field" id="f-phone">
+        <label class="label">手机号</label>
+        <input class="input" id="phone" type="tel" maxlength="11" placeholder="请输入手机号" autocomplete="tel">
+        <div class="field-error">请输入正确的手机号</div>
+      </div>
+      <div class="field" id="f-code">
+        <label class="label">验证码</label>
+        <div style="position:relative">
+          <input class="input" id="code" type="text" maxlength="6" inputmode="numeric" placeholder="请输入 6 位验证码" style="padding-right:112px">
+          <button type="button" class="btn btn-secondary btn-xs" id="send-code" style="position:absolute;right:7px;top:7px;height:34px;padding:0 12px">获取验证码</button>
+        </div>
+        <div class="field-error">请输入 6 位数字验证码</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="submit-btn" style="margin-top:6px">登 录</button>
+      <div style="text-align:center;font-size:12px;color:var(--text-faint);margin-top:14px">未注册的手机号，验证后将自动创建账号</div>
+    </form>
+  </div>
+
+  <!-- 第 2 步：新用户补充账号信息 -->
+  <div id="step2" style="display:none">
+    <div class="field" id="f-name">
+      <label class="label">姓名<span class="req">*</span></label>
+      <input class="input" id="name" type="text" maxlength="20" placeholder="请输入真实姓名" autocomplete="name">
+      <div class="field-error">请输入姓名</div>
+    </div>
+    <div class="field" id="f-hosp">
+      <label class="label">医院<span class="req">*</span></label>
+      <input class="input" id="hosp" type="text" maxlength="40" placeholder="请输入所在医院">
+      <div class="field-error">请输入医院</div>
+    </div>
+    <div class="field" id="f-dept">
+      <label class="label">科室<span class="req">*</span></label>
+      <input class="input" id="dept" type="text" maxlength="20" placeholder="请输入科室">
+      <div class="field-error">请输入科室</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-block" id="reg-btn" style="margin-top:4px">完成注册并进入</button>
+    <div style="text-align:center;margin-top:12px"><a href="javascript:void(0)" id="back-step1" style="font-size:13px">返回重新验证手机号</a></div>
+  </div>
+
+  <div class="demo-tip">演示账号：<b>13900000003</b> 王志强（含示例病例）· <b>13900000002</b> 李明华<br>任意 6 位验证码 · 新手机号验证后将自动注册</div>
+</div>
+
+<script src="../assets/js/seed-data.js?v=20261109"></script>
+<script src="../assets/js/store.js?v=20261109"></script>
+<script src="../assets/js/app.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp, S = window.HRStore;
+
+  // 已登录医生自动进入患者列表
+  var session = S.getSession();
+  if (session) {
+    var u = S.findUserById(session.userId);
+    if (u) { location.replace('web-patients.html'); return; }
+  }
+
+  var codeSent = false;
+  var verifiedPhone = null;
+
+  document.getElementById('send-code').addEventListener('click', function () {
+    A.sendCode(this, function () {
+      var phone = document.getElementById('phone').value.trim();
+      if (!A.validPhone(phone)) { document.getElementById('f-phone').classList.add('invalid'); return '请输入正确的手机号'; }
+      return null;
+    }, function () { codeSent = true; });
+  });
+
+  function showStep(n) {
+    document.getElementById('step1').style.display = n === 1 ? 'block' : 'none';
+    document.getElementById('step2').style.display = n === 2 ? 'block' : 'none';
+    document.getElementById('wa-title').textContent = n === 1 ? '医生登录' : '完善账号信息';
+    document.getElementById('wa-sub').textContent = n === 1 ? 'Web 端 · 医生门户' : '将为 ' + verifiedPhone.slice(0, 3) + '****' + verifiedPhone.slice(-4) + ' 创建医生账号';
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById('login-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var phone = document.getElementById('phone').value.trim();
+    var code = document.getElementById('code').value.trim();
+    var okPhone = A.validPhone(phone);
+    var okCode = /^\d{6}$/.test(code);
+    document.getElementById('f-phone').classList.toggle('invalid', !okPhone);
+    document.getElementById('f-code').classList.toggle('invalid', !okCode);
+    if (!okPhone || !okCode) return;
+    if (!codeSent) { A.toast('请先获取验证码', 'error'); return; }
+
+    // 已注册：验证码通过直接登录
+    if (S.findUserByPhone(phone)) {
+      var r = A.doLogin(phone);
+      if (r.error) { A.toast(r.error, 'error'); return; }
+      A.flash('欢迎回来，' + r.user.name + ' 医生', 'success');
+      location.href = 'web-patients.html';
+      return;
+    }
+
+    // 未注册：进入第二步补充账号信息
+    verifiedPhone = phone;
+    showStep(2);
+  });
+
+  document.getElementById('reg-btn').addEventListener('click', function () {
+    var name = document.getElementById('name').value.trim();
+    var hosp = document.getElementById('hosp').value.trim();
+    var dept = document.getElementById('dept').value.trim();
+    var flags = { 'f-name': !!name, 'f-hosp': !!hosp, 'f-dept': !!dept };
+    Object.keys(flags).forEach(function (id) {
+      document.getElementById(id).classList.toggle('invalid', !flags[id]);
+    });
+    if (Object.keys(flags).some(function (id) { return !flags[id]; })) return;
+
+    var user = S.createUser({
+      phone: verifiedPhone,
+      name: name, hospital: hosp, department: dept
+    });
+    S.setSession(user);
+    S.touchLogin(user.id);
+    A.flash('注册成功，欢迎加入恒瑞IMDT', 'success');
+    location.href = 'web-patients.html';
+  });
+
+  document.getElementById('back-step1').addEventListener('click', function () {
+    showStep(1);
+  });
+})();
+</script>
+</body>
+</html>

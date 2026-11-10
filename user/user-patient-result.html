@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MDT 分析结果 · 恒瑞IMDT</title>
+<link rel="stylesheet" href="../assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/pages.css?v=20261109">
+</head>
+<body>
+<div class="mobile-shell">
+  <div class="app-topbar">
+    <button class="back-btn" id="back-btn" aria-label="返回"></button>
+    <div class="brand-name"><span class="logo-mark"></span>恒瑞IMDT</div>
+    <div class="brand-sub">汇聚专业 • 共筑更好治疗</div>
+  </div>
+
+  <div class="result-head">
+    <div class="card card-pad" style="padding:14px 16px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:16.5px;font-weight:700" id="p-meta"></span>
+        <span style="margin-left:auto" class="done-strip" id="p-status">✓ 分析完成</span>
+      </div>
+      <div class="pc-chips" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap" id="p-chips"></div>
+    </div>
+  </div>
+
+  <div id="content"></div>
+
+  <div style="height:96px"></div>
+  <div class="btn-footer">
+    <button class="btn btn-secondary btn-block" id="back-list">返回患者列表</button>
+  </div>
+</div>
+
+<script src="../assets/js/seed-data.js?v=20261109"></script>
+<script src="../assets/js/store.js?v=20261109"></script>
+<script src="../assets/js/app.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp, S = window.HRStore;
+  var user = A.guard();
+  if (!user) return;
+  document.getElementById('back-btn').innerHTML = A.I.back(22);
+
+  var id = A.getParam('id');
+  var patient = id ? S.getPatientById(id) : null;
+  if (!patient || patient.creatorId !== user.id) {
+    A.toast('无权查看该患者', 'error');
+    setTimeout(function () { location.replace('user-patients.html'); }, 600);
+    return;
+  }
+  if (patient.status !== 'completed') {
+    location.replace('user-patient-progress.html?id=' + patient.id);
+    return;
+  }
+
+  document.getElementById('p-meta').textContent = (patient.gender ? patient.gender + ' · ' : '') + (patient.age ? patient.age + '岁' : '');
+  document.getElementById('p-chips').innerHTML =
+    '<span class="mono-chip">' + A.esc(patient.code) + '</span>' +
+    '<span class="tag tag-gray">' + A.esc(patient.disease) + '</span>' +
+    '<span class="tag tag-gray">材料 ' + patient.materials.length + ' 份</span>';
+
+  var r = patient.result;
+  var DEPT_ICONS = { '心内科': 'heart', '肾病科': 'kidney', '肿瘤科': 'tumor', '影像科': 'scan' };
+
+  var html = '';
+  if (r) {
+    html +=
+      '<div class="card res-block">' +
+      '<div class="rb-title"><span class="ic">' + A.I.doc(15) + '</span>MDT 综合建议</div>' +
+      '<div class="rb-sub">综合多学科视角形成的总体建议</div>' +
+      '<div class="overall-text">' + A.esc(r.overall) + '</div>' +
+      '<div class="keypoints">' + (r.keyPoints || []).map(function (k) {
+        return '<span class="keypoint">' + A.esc(k.k + (k.sub ? ' · ' + k.sub : '')) + '</span>';
+      }).join('') + '</div></div>';
+
+    html +=
+      '<div class="card res-block">' +
+      '<div class="rb-title"><span class="ic">' + A.I.users(15) + '</span>分科室建议</div>' +
+      '<div class="rb-sub">结合专科视角，查看详细建议</div>' +
+      (r.departments || []).map(function (d) {
+        var ic = DEPT_ICONS[d.name] || 'dept';
+        return '<div class="dept-item">' +
+          '<div class="dt-head"><span class="dt-ic">' + A.I[ic](15) + '</span><span class="dt-name">' + A.esc(d.name) + '建议</span></div>' +
+          '<div class="dt-text">' + A.esc(d.summary) + '</div></div>';
+      }).join('') + '</div>';
+
+    html += '<div class="res-block"><div class="disclaimer"><span>' + A.I.info(15) + '</span><span>' + A.esc(r.disclaimer) + '</span></div></div>';
+  } else {
+    html += '<div class="card card-pad empty-state"><div class="es-ic">' + A.I.doc(26) + '</div><div class="es-t">暂无分析结果</div><div class="es-s">请稍后刷新查看</div></div>';
+  }
+  document.getElementById('content').innerHTML = html;
+
+  document.getElementById('back-list').addEventListener('click', function () {
+    location.href = 'user-patients.html';
+  });
+  document.getElementById('back-btn').addEventListener('click', function () {
+    location.href = 'user-patients.html';
+  });
+})();
+</script>
+</body>
+</html>

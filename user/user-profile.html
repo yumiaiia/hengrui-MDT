@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>我的 · 恒瑞IMDT</title>
+<link rel="stylesheet" href="../assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/pages.css?v=20261109">
+</head>
+<body>
+<div class="mobile-shell">
+  <div class="app-topbar">
+    <span style="width:40px"></span>
+    <div class="brand-name"><span class="logo-mark"></span>恒瑞IMDT</div>
+    <div class="brand-sub">汇聚专业 • 共筑更好治疗</div>
+  </div>
+
+  <div class="card profile-head">
+    <div class="avatar" id="avatar">医</div>
+    <div style="flex:1;min-width:0">
+      <div class="pr-name"><span id="u-name">—</span><span class="tag tag-doctor">医生</span></div>
+      <div class="pr-sub" id="u-hosp">—</div>
+      <div class="pr-sub" id="u-phone" style="font-family:var(--mono);letter-spacing:.5px">—</div>
+    </div>
+  </div>
+
+  <div class="menu-list">
+    <div class="menu-item danger" id="menu-logout">
+      <span class="mi" id="mi-logout"></span><span class="mt">退出登录</span>
+    </div>
+  </div>
+
+  <div class="page-note">恒瑞IMDT · 以多学科智慧点亮更好的治疗选择</div>
+
+  <nav class="bottom-tabbar">
+    <a href="user-patients.html"><span class="tab-icon" data-ic="folder"></span>患者</a>
+    <a href="user-profile.html" class="active"><span class="tab-icon" data-ic="users"></span>我的</a>
+  </nav>
+</div>
+
+<script src="../assets/js/seed-data.js?v=20261109"></script>
+<script src="../assets/js/store.js?v=20261109"></script>
+<script src="../assets/js/app.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp, S = window.HRStore;
+  var user = A.guard();
+  if (!user) return;
+
+  document.getElementById('mi-logout').innerHTML = A.I.logout(17);
+  document.querySelectorAll('.tab-icon').forEach(function (el) {
+    el.innerHTML = A.I[el.getAttribute('data-ic')](22);
+  });
+
+  document.getElementById('u-name').textContent = user.name;
+  document.getElementById('avatar').textContent = user.name.charAt(0);
+  document.getElementById('u-hosp').textContent = (user.hospital || '—') + ' · ' + (user.department || '—');
+  document.getElementById('u-phone').textContent = user.phone;
+
+  document.getElementById('menu-logout').addEventListener('click', function () {
+    A.logout();
+  });
+})();
+</script>
+</body>
+</html>

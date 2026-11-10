@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>患者管理 · 恒瑞IMDT 医生门户</title>
+<link rel="stylesheet" href="../assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/pages.css?v=20261109">
+</head>
+<body class="web-shell">
+<header class="web-topbar">
+  <div class="brand"><span class="logo-mark"></span><span class="name">恒瑞IMDT</span></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="spacer"></div>
+  <div class="user-box">
+    <span class="tag tag-doctor" id="tb-role">医生</span>
+    <span class="user-name" id="tb-user">—</span>
+    <a href="javascript:void(0)" class="logout-link" id="tb-logout">退出登录</a>
+  </div>
+</header>
+
+<main class="web-main">
+  <div class="page-head">
+    <div>
+      <div class="ph-t">患者管理</div>
+      <div class="ph-s" id="ph-s">本人创建的患者档案</div>
+    </div>
+    <button class="btn btn-primary btn-lg" id="create-btn">＋ 创建患者</button>
+  </div>
+
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="s-ic" id="search-ic"></span>
+      <input id="search-input" type="text" placeholder="搜索患者编号">
+    </div>
+    <select id="f-gender">
+      <option value="">性别 · 全部</option>
+      <option value="男">男</option>
+      <option value="女">女</option>
+    </select>
+    <select id="f-age">
+      <option value="">年龄段 · 全部</option>
+      <option value="lt40">40 岁以下</option>
+      <option value="4060">40 - 60 岁</option>
+      <option value="gt60">60 岁以上</option>
+    </select>
+    <select id="f-disease"></select>
+    <select id="f-status">
+      <option value="">状态 · 全部</option>
+      <option value="analyzing">分析中</option>
+      <option value="completed">已完成</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>患者编号</th>
+            <th>性别 · 年龄</th>
+            <th>疾病</th>
+            <th>材料</th>
+            <th>状态</th>
+            <th>更新时间</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty-state" id="empty" style="display:none;padding:52px 20px">
+      <div class="es-ic" id="es-ic"></div>
+      <div class="es-t" id="es-t">暂无患者档案</div>
+      <div class="es-s" id="es-s">点击"创建患者"开始第一次 MDT 分析</div>
+    </div>
+  </div>
+  <div class="count-note" id="count-note"></div>
+</main>
+
+<script src="../assets/js/seed-data.js?v=20261109"></script>
+<script src="../assets/js/store.js?v=20261109"></script>
+<script src="../assets/js/app.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp, S = window.HRStore;
+  var user = A.guard('web');
+  if (!user) return;
+  A.webChrome(user, 'patients');
+
+  document.getElementById('search-ic').innerHTML = A.I.search(17);
+  document.getElementById('es-ic').innerHTML = A.I.folder(26);
+
+  var filter = { q: '', gender: '', age: '', disease: '', status: '' };
+
+  function inAgeBand(p) {
+    if (!filter.age || !p.age) return !filter.age;
+    if (filter.age === 'lt40') return p.age < 40;
+    if (filter.age === '4060') return p.age >= 40 && p.age <= 60;
+    return p.age > 60;
+  }
+
+  function render() {
+    var list = S.listPatientsByCreator(user.id);
+    if (filter.q) {
+      var q = filter.q.toLowerCase();
+      list = list.filter(function (p) { return p.code.toLowerCase().indexOf(q) >= 0; });
+    }
+    if (filter.gender) list = list.filter(function (p) { return p.gender === filter.gender; });
+    list = list.filter(inAgeBand);
+    if (filter.disease) list = list.filter(function (p) { return p.disease === filter.disease; });
+    if (filter.status) list = list.filter(function (p) { return p.status === filter.status; });
+
+    var tbody = document.getElementById('tbody');
+    tbody.innerHTML = list.map(function (p) {
+      return '<tr class="table-row-link" data-id="' + p.id + '">' +
+        '<td class="num">' + A.esc(p.code) + '</td>' +
+        '<td>' + A.esc(p.gender ? p.gender : '—') + (p.age ? ' · ' + p.age + '岁' : '') + '</td>' +
+        '<td>' + A.esc(p.disease) + '</td>' +
+        '<td>' + p.materials.length + ' 份</td>' +
+        '<td>' + A.statusTag(p) + '</td>' +
+        '<td class="cell-sub">' + A.esc(p.updatedAt) + '</td></tr>';
+    }).join('');
+    tbody.querySelectorAll('.table-row-link').forEach(function (tr) {
+      tr.addEventListener('click', function () {
+        location.href = 'web-patient-detail.html?id=' + tr.getAttribute('data-id');
+      });
+    });
+
+    var empty = document.getElementById('empty');
+    var hasFilter = filter.q || filter.gender || filter.age || filter.disease || filter.status;
+    empty.style.display = list.length ? 'none' : 'block';
+    if (!list.length) {
+      document.getElementById('es-t').textContent = hasFilter ? '没有符合条件的患者' : '暂无患者档案';
+      document.getElementById('es-s').textContent = hasFilter ? '试试调整搜索或筛选条件' : '点击"创建患者"开始第一次 MDT 分析';
+    }
+    document.querySelector('.table-wrap').style.display = list.length ? 'block' : 'none';
+    document.getElementById('count-note').textContent = '共 ' + list.length + ' 位患者';
+  }
+
+  function renderDiseaseOptions() {
+    var diseases = [];
+    S.listPatientsByCreator(user.id).forEach(function (p) {
+      if (diseases.indexOf(p.disease) < 0) diseases.push(p.disease);
+    });
+    var sel = document.getElementById('f-disease');
+    sel.innerHTML = '<option value="">疾病 · 全部</option>' + diseases.map(function (d) {
+      return '<option value="' + A.esc(d) + '">' + A.esc(d) + '</option>';
+    }).join('');
+    sel.value = filter.disease;
+  }
+
+  document.getElementById('search-input').addEventListener('input', function () {
+    filter.q = this.value.trim(); render();
+  });
+  [['f-gender', 'gender'], ['f-age', 'age'], ['f-disease', 'disease'], ['f-status', 'status']].forEach(function (pair) {
+    document.getElementById(pair[0]).addEventListener('change', function () {
+      filter[pair[1]] = this.value; render();
+    });
+  });
+  document.getElementById('create-btn').addEventListener('click', function () {
+    location.href = 'web-patient-create.html';
+  });
+
+  renderDiseaseOptions();
+  render();
+})();
+</script>
+</body>
+</html>

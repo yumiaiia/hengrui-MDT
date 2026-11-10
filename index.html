@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>恒瑞IMDT · 功能原型</title>
+<link rel="stylesheet" href="assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="assets/css/pages.css?v=20261109">
+</head>
+<body>
+<div class="entry-body">
+  <div class="entry-wrap">
+    <div class="entry-hero">
+      <div class="logo-mark"></div>
+      <div class="t1">恒瑞IMDT</div>
+      <div class="t2">以多学科智慧，点亮更好的治疗选择</div>
+      <div class="t3">汇聚专业 · 守护更多可能 · 功 能 原 型</div>
+    </div>
+
+    <div class="entry-grid">
+      <div class="entry-card" id="card-user">
+        <div class="ec-head">
+          <span class="ec-ic mobile" id="ic-mobile"></span>
+          <div><div class="ec-t">用户端 · 移动端 H5</div><div class="ec-s">医生使用 · 建议以手机尺寸浏览</div></div>
+        </div>
+        <div class="ec-desc">手机号验证码登录（未注册自动进入注册）、患者列表、创建患者、MDT 分析与结果、"我的"页面。医生仅可查看自己创建的患者。</div>
+        <div class="ec-demo">演示账号：<b>13900000002</b> 李明华 医生<br>验证码登录 · 任意 6 位数字可用</div>
+        <div class="ec-go"><span>进入用户端</span><span id="go-user"></span></div>
+      </div>
+
+      <div class="entry-card" id="card-web">
+        <div class="ec-head">
+          <span class="ec-ic web" id="ic-web"></span>
+          <div><div class="ec-t">医生 Web 门户</div><div class="ec-s">医生使用 · 桌面浏览器</div></div>
+        </div>
+        <div class="ec-desc">手机号验证码登录（未注册自动进入注册），管理本人患者并可在 Web 创建患者；患者详情含疾病进展时间线、MDT 建议、多系统累及三部分内容。</div>
+        <div class="ec-demo">演示账号：<b>13900000003</b> 王志强 医生（含示例病例）<br>验证码登录 · 任意 6 位数字可用</div>
+        <div class="ec-go"><span>进入 Web 门户</span><span id="go-web"></span></div>
+      </div>
+    </div>
+
+    <div class="entry-foot">
+      <button class="btn btn-outline btn-sm" id="reset-btn">重置演示数据</button>
+      <div class="count-note" style="text-align:center">验证码演示规则：点击"获取验证码"后，任意 6 位数字均可通过 · 数据保存在浏览器本地 localStorage</div>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/seed-data.js?v=20261109"></script>
+<script src="assets/js/store.js?v=20261109"></script>
+<script src="assets/js/app.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp;
+  document.getElementById('ic-mobile').innerHTML = A.I.phone(22);
+  document.getElementById('ic-web').innerHTML = A.I.hosp(22);
+  document.getElementById('go-user').innerHTML = A.I.arrowR(18);
+  document.getElementById('go-web').innerHTML = A.I.arrowR(18);
+
+  document.getElementById('card-user').addEventListener('click', function () {
+    location.href = 'user/user-login.html';
+  });
+  document.getElementById('card-web').addEventListener('click', function () {
+    location.href = 'web/web-login.html';
+  });
+  document.getElementById('reset-btn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    A.confirmModal({
+      title: '重置演示数据',
+      body: '将清空本地所有账号、患者与会话数据，并恢复初始演示数据。确定重置吗？',
+      confirmText: '重置',
+      danger: true
+    }).then(function (ok) {
+      if (!ok) return;
+      window.HRStore.resetAll();
+      A.toast('演示数据已重置', 'success');
+    });
+  });
+})();
+</script>
+</body>
+</html>

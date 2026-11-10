@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>分析中 · 恒瑞IMDT</title>
+<link rel="stylesheet" href="../assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/pages.css?v=20261109">
+</head>
+<body>
+<div class="mobile-shell">
+  <div class="app-topbar">
+    <button class="back-btn" id="back-btn" aria-label="返回"></button>
+    <div class="brand-name"><span class="logo-mark"></span>恒瑞IMDT</div>
+    <div class="brand-sub">汇聚专业 • 共筑更好治疗</div>
+  </div>
+
+  <div class="progress-hero">
+    <div class="ph-title" id="ph-title">材料提交成功</div>
+    <div class="ph-sub">让每一份材料，成为清晰的诊疗线索</div>
+  </div>
+
+  <div class="card card-pad form-card">
+    <div style="text-align:center;padding:10px 0 4px">
+      <div class="big-percent"><span id="percent">0</span>%</div>
+      <div style="font-size:13px;color:var(--text-sub);font-weight:600;margin-top:2px" id="percent-label">结构化解析中</div>
+    </div>
+    <div class="progress-steps" id="steps" style="margin-top:18px"></div>
+    <div style="text-align:center;font-size:12.5px;color:var(--text-faint);margin-top:6px">请稍候，完成后将自动展示分析结果</div>
+  </div>
+
+  <div style="margin:14px 16px 0">
+    <div class="info-strip"><span class="ic" id="lock-ic"></span><span>材料已加密，隐私信息将自动脱敏</span></div>
+  </div>
+
+  <div style="height:110px"></div>
+  <div class="btn-footer" id="done-footer" style="display:none">
+    <button class="btn btn-primary btn-block" id="view-result">查看 MDT 分析结果</button>
+  </div>
+  <div class="btn-footer" id="wait-footer">
+    <button class="btn btn-secondary btn-block" id="back-list">返回患者列表</button>
+  </div>
+</div>
+
+<script src="../assets/js/seed-data.js?v=20261109"></script>
+<script src="../assets/js/store.js?v=20261109"></script>
+<script src="../assets/js/app.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp, S = window.HRStore;
+  var user = A.guard();
+  if (!user) return;
+  document.getElementById('back-btn').innerHTML = A.I.back(22);
+  document.getElementById('lock-ic').innerHTML = A.I.shield(16);
+
+  var id = A.getParam('id');
+  var patient = id ? S.getPatientById(id) : null;
+  if (!patient || patient.creatorId !== user.id) {
+    A.toast('无权查看该患者', 'error');
+    setTimeout(function () { location.replace('user-patients.html'); }, 600);
+    return;
+  }
+  if (patient.status === 'completed') {
+    location.replace('user-patient-result.html?id=' + patient.id);
+    return;
+  }
+
+  var percent = Math.max(10, (patient.progressStep - 1) * 25);
+  var percentTimer = null;
+
+  function renderSteps(p) {
+    var steps = A.PROGRESS_STEPS;
+    var html = steps.map(function (s, i) {
+      var n = i + 1;
+      var cls = n <= p.progressStep ? 'done' : (n === p.progressStep + 1 && p.status !== 'completed' ? 'active' : '');
+      var dot = n <= p.progressStep ? A.I.check(14) : n;
+      var desc = s.desc;
+      if (cls === 'active' && n === 3) desc = '正在提取病史、检查与治疗信息';
+      return '<div class="p-step ' + cls + '">' +
+        '<div class="p-rail"><div class="p-dot">' + dot + '</div>' + (n < 4 ? '<div class="p-line"></div>' : '') + '</div>' +
+        '<div class="p-body"><div class="pt">' + s.name + '</div><div class="pd">' + desc + '</div></div></div>';
+    }).join('');
+    document.getElementById('steps').innerHTML = html;
+    var done = p.status === 'completed';
+    document.getElementById('percent').textContent = done ? 100 : Math.min(96, Math.round(percent));
+    document.getElementById('percent-label').textContent = done ? '分析完成' : (p.progressStep === 2 ? '结构化解析中' : (p.progressStep === 3 ? 'MDT 分析中' : '处理中'));
+  }
+
+  function startPercentLoop() {
+    if (percentTimer) return;
+    percentTimer = setInterval(function () {
+      var p = S.getPatientById(patient.id);
+      var cap = p.status === 'completed' ? 100 : p.progressStep * 25;
+      if (percent < cap) percent = Math.min(cap, percent + 3 + Math.random() * 4);
+      document.getElementById('percent').textContent = Math.round(percent);
+    }, 380);
+  }
+
+  function onDone(p) {
+    if (percentTimer) { clearInterval(percentTimer); percentTimer = null; }
+    percent = 100;
+    renderSteps(p);
+    document.getElementById('ph-title').textContent = '分析完成';
+    document.getElementById('wait-footer').style.display = 'none';
+    document.getElementById('done-footer').style.display = 'block';
+    A.toast('MDT 分析完成，可查看结果', 'success');
+  }
+
+  renderSteps(patient);
+  startPercentLoop();
+
+  A.runProgressSimulation(patient.id, {
+    onUpdate: renderSteps,
+    onDone: onDone
+  });
+
+  document.getElementById('view-result').addEventListener('click', function () {
+    location.href = 'user-patient-result.html?id=' + patient.id;
+  });
+  document.getElementById('back-list').addEventListener('click', function () {
+    location.href = 'user-patients.html';
+  });
+  document.getElementById('back-btn').addEventListener('click', function () {
+    location.href = 'user-patients.html';
+  });
+})();
+</script>
+</body>
+</html>

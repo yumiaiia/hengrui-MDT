@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>创建患者 · 恒瑞IMDT 医生门户</title>
+<link rel="stylesheet" href="../assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/pages.css?v=20261109">
+</head>
+<body class="web-shell">
+<header class="web-topbar">
+  <div class="brand"><span class="logo-mark"></span><span class="name">恒瑞IMDT</span></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="spacer"></div>
+  <div class="user-box">
+    <span class="tag tag-doctor" id="tb-role">医生</span>
+    <span class="user-name" id="tb-user">—</span>
+    <a href="javascript:void(0)" class="logout-link" id="tb-logout">退出登录</a>
+  </div>
+</header>
+
+<main class="web-main">
+  <div class="create-wrap">
+    <a href="web-patients.html" class="web-back" id="back-link">← 返回患者列表</a>
+    <div class="card create-card">
+      <div class="cc-title">创建患者档案</div>
+      <div class="cc-sub">提交材料后将开始 MDT 多学科综合分析</div>
+
+      <!-- ① 患者信息 -->
+      <div class="form-section">
+        <div class="fs-head"><span class="fs-num">1</span><span class="fs-t">患者信息</span><span class="fs-s">选择疾病，开始档案创建</span></div>
+        <div class="form-grid">
+          <div class="field" id="f-disease">
+            <label class="label">疾病<span class="req">*</span></label>
+            <select class="select" id="p-disease"></select>
+            <div class="field-error">请选择疾病</div>
+          </div>
+        </div>
+        <div class="info-strip"><span class="ic" data-ic="shield"></span><span>患者资料将加密处理，仅用于本次分析</span></div>
+      </div>
+
+      <!-- ② 上传材料 -->
+      <div class="form-section">
+        <div class="fs-head"><span class="fs-num">2</span><span class="fs-t">上传材料</span><span class="fs-s">支持 PDF / JPG / PNG，可上传多份</span></div>
+        <div class="field" style="margin-bottom:16px">
+          <label class="label">选择材料类型</label>
+          <div class="chip-row" id="type-chips"></div>
+          <div class="hint-line" style="margin:8px 0 0">请选择本次上传的材料类型，可在列表中逐份确认</div>
+        </div>
+        <div class="upload-zone" id="upload-zone">
+          <div class="uz-icon" id="uz-icon"></div>
+          <div class="uz-t">拖拽材料到此处，或点击选择文件</div>
+          <div class="uz-s">支持 PDF、JPG、PNG 格式，可一次选择多份</div>
+          <button type="button" class="btn btn-secondary btn-sm uz-btn" id="pick-btn">选择文件</button>
+        </div>
+        <div class="mat-list" id="mat-list" style="display:none;margin-top:16px">
+          <div class="mat-head"><span>已上传材料</span><span class="cnt" id="mat-count">0 份</span></div>
+          <div id="mat-rows"></div>
+        </div>
+        <div class="info-strip" style="margin-top:14px"><span class="ic" data-ic="shield"></span><span>材料已加密，隐私信息将自动脱敏</span></div>
+      </div>
+
+      <!-- 知情同意区 -->
+      <div class="form-section">
+        <div class="fs-head"><span class="fs-t">知情同意</span><span class="fs-s">提交前须确认已获得患者知情同意</span></div>
+        <label class="consent-row">
+          <input type="checkbox" id="consent">
+          <span class="cb"></span>
+          <span class="ct" id="consent-text">我已阅读并同意<a id="consent-link">《患者知情同意书》</a></span>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary btn-lg" id="cancel-btn">取 消</button>
+        <button type="button" class="btn btn-primary btn-lg" id="submit-btn">提交材料并分析</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none">
+
+<script src="../assets/js/seed-data.js?v=20261109"></script>
+<script src="../assets/js/store.js?v=20261109"></script>
+<script src="../assets/js/app.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp, S = window.HRStore;
+  var user = A.guard('web');
+  if (!user) return;
+  A.webChrome(user, 'patients');
+
+  var DRAFT_KEY = 'hrimdt_draft_web';
+  var MAT_TYPES = window.HR_SEED.constants.materialTypes;
+
+  document.getElementById('uz-icon').innerHTML = A.I.file(24);
+  document.querySelectorAll('.info-strip .ic[data-ic]').forEach(function (el) {
+    el.innerHTML = A.I[el.getAttribute('data-ic')](16);
+  });
+
+  var diseaseSel = document.getElementById('p-disease');
+  diseaseSel.innerHTML = '<option value="">请选择疾病</option>' + window.HR_SEED.constants.diseases.map(function (d) {
+    return '<option value="' + d + '">' + d + '</option>';
+  }).join('');
+
+  var typeChips = document.getElementById('type-chips');
+  typeChips.innerHTML = MAT_TYPES.map(function (t, i) {
+    return '<button type="button" class="chip' + (i === 0 ? ' active' : '') + '" data-t="' + t + '">' + t + '</button>';
+  }).join('');
+
+  var state = { disease: '', matType: MAT_TYPES[0], entries: [], consent: false };
+
+  /* 草稿恢复（已完成材料直接还原） */
+  try {
+    var saved = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null');
+    if (saved) {
+      state.disease = saved.disease || '';
+      state.matType = saved.matType || state.matType;
+      state.consent = !!saved.consent;
+      state.entries = (saved.entries || []).map(function (m) {
+        return { name: m.name, ext: String(m.name).split('.').pop().toLowerCase(), size: m.size, type: m.type, state: 'done', progress: 100, source: 'file' };
+      });
+    }
+  } catch (e) { }
+
+  function saveDraft() {
+    state.disease = diseaseSel.value;
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+        disease: state.disease, matType: state.matType, consent: state.consent,
+        entries: state.entries.filter(function (x) { return x.state === 'done'; }).map(function (x) {
+          return { name: x.name, size: x.size, type: x.type };
+        })
+      }));
+    } catch (e) { }
+  }
+  function clearDraft() { try { sessionStorage.removeItem(DRAFT_KEY); } catch (e) { } }
+
+  /* 表单回填 */
+  if (state.disease) diseaseSel.value = state.disease;
+  document.getElementById('consent').checked = state.consent;
+  typeChips.querySelectorAll('.chip').forEach(function (c) {
+    c.classList.toggle('active', c.getAttribute('data-t') === state.matType);
+  });
+
+  diseaseSel.addEventListener('change', saveDraft);
+  typeChips.querySelectorAll('.chip').forEach(function (c) {
+    c.addEventListener('click', function () {
+      typeChips.querySelectorAll('.chip').forEach(function (x) { x.classList.remove('active'); });
+      c.classList.add('active');
+      state.matType = c.getAttribute('data-t');
+      saveDraft();
+    });
+  });
+
+  /* 材料列表渲染（流水线状态） */
+  function renderEntries() {
+    var box = document.getElementById('mat-list');
+    var rows = document.getElementById('mat-rows');
+    box.style.display = state.entries.length ? 'block' : 'none';
+    var doneCount = state.entries.filter(function (x) { return x.state === 'done'; }).length;
+    document.getElementById('mat-count').textContent = doneCount + ' 份';
+    rows.innerHTML = state.entries.map(function (x, i) {
+      var badge = '';
+      if (x.state === 'uploading') badge = '<span class="status-badge uploading">' + A.spin(12) + '上传中 ' + x.progress + '%</span>';
+      else if (x.state === 'processing') badge = '<span class="status-badge processing">' + A.spin(12) + '处理中</span>';
+      else if (x.state === 'done') badge = '<span class="status-badge done">' + A.I.check(13) + '已完成</span>';
+      else badge = '<span class="status-badge failed">格式不支持</span>';
+      var bar = x.state === 'uploading' ? '<div class="mini-progress"><i style="width:' + x.progress + '%"></i></div>' : '';
+      var ops = '';
+      if (x.state === 'failed') ops = '<button class="btn-link retry-link" data-a="retry" data-i="' + i + '">重新上传</button>';
+      if (x.state === 'failed' || x.state === 'done') ops += '<button class="btn-link gray" data-a="remove" data-i="' + i + '">移除</button>';
+      return '<div class="mat-row' + (x.state === 'failed' ? ' is-failed' : '') + '">' +
+        '<span class="f-ic">' + A.fileIcon(x.name) + '</span>' +
+        '<div class="f-main"><div class="f-name">' + A.esc(x.name) + '</div>' +
+        '<div class="f-meta"><span class="tag tag-gray" style="height:20px;padding:0 8px;font-size:11px">' + A.esc(x.type) + '</span><span>' + A.esc(x.size) + '</span></div>' + bar + '</div>' +
+        '<div style="display:flex;align-items:center;gap:14px;flex:none">' + badge + ops + '</div></div>';
+    }).join('');
+    rows.querySelectorAll('button[data-a]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var i = +b.getAttribute('data-i');
+        if (b.getAttribute('data-a') === 'remove') {
+          state.entries.splice(i, 1);
+          renderEntries(); saveDraft();
+        } else {
+          retryIndex = i;
+          document.getElementById('file-input').removeAttribute('multiple');
+          document.getElementById('file-input').click();
+        }
+      });
+    });
+  }
+
+  function addFiles(files, replaceIndex) {
+    var arr = Array.prototype.slice.call(files || []);
+    if (!arr.length) return;
+    arr.forEach(function (f, idx) {
+      var entry = A.makeFileEntry(f);
+      entry.type = state.matType;
+      if (replaceIndex != null && idx === 0) state.entries[replaceIndex] = entry;
+      else state.entries.push(entry);
+      A.processFileEntry(entry, { onUpdate: renderEntries, onDone: saveDraft });
+    });
+    document.getElementById('file-input').setAttribute('multiple', '');
+    renderEntries();
+  }
+
+  var retryIndex = null;
+  document.getElementById('file-input').addEventListener('change', function () {
+    addFiles(this.files, retryIndex);
+    retryIndex = null;
+    this.value = '';
+  });
+
+  /* 点击 / 拖拽上传 */
+  document.getElementById('pick-btn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    document.getElementById('file-input').click();
+  });
+  var zone = document.getElementById('upload-zone');
+  zone.addEventListener('click', function () { document.getElementById('file-input').click(); });
+  zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', function () { zone.classList.remove('dragover'); });
+  zone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    addFiles(e.dataTransfer.files);
+  });
+
+  /* 知情同意 */
+  document.getElementById('consent').addEventListener('change', function () {
+    state.consent = this.checked; saveDraft();
+  });
+  document.getElementById('consent-link').addEventListener('click', function (e) {
+    e.preventDefault(); A.openConsentModal();
+  });
+  document.getElementById('consent-text').addEventListener('click', function (e) {
+    if (e.target.id !== 'consent-link') document.getElementById('consent').click();
+  });
+
+  /* 取消 */
+  function goBack() { location.href = 'web-patients.html'; }
+  document.getElementById('cancel-btn').addEventListener('click', function () {
+    var hasContent = diseaseSel.value || state.entries.length;
+    if (hasContent) {
+      A.confirmModal({ title: '放弃创建？', body: '当前填写的信息与已上传的材料将被清空', confirmText: '放弃', danger: true }).then(function (ok) {
+        if (ok) { clearDraft(); goBack(); }
+      });
+    } else goBack();
+  });
+  document.getElementById('back-link').addEventListener('click', function (e) {
+    e.preventDefault();
+    saveDraft();
+    goBack();
+  });
+
+  /* 提交校验（按文档顺序） */
+  document.getElementById('submit-btn').addEventListener('click', function () {
+    if (!diseaseSel.value) {
+      document.getElementById('f-disease').classList.add('invalid');
+      A.toast('请选择疾病', 'error');
+      return;
+    }
+    document.getElementById('f-disease').classList.remove('invalid');
+    var busy = state.entries.some(function (x) { return x.state === 'uploading' || x.state === 'processing'; });
+    if (busy) { A.toast('仍有文件正在处理，请稍候', 'error'); return; }
+    var materials = state.entries.filter(function (x) { return x.state === 'done'; }).map(function (x) {
+      return { type: x.type, name: x.name, size: x.size, source: x.source || 'file' };
+    });
+    if (!materials.length) { A.toast('请至少上传 1 份材料', 'error'); return; }
+    if (!state.consent) { A.toast('请先阅读并同意《患者知情同意书》', 'error'); return; }
+
+    var p = S.createPatient({
+      disease: diseaseSel.value,
+      materials: materials,
+      creatorId: user.id,
+      creatorName: user.name
+    });
+    clearDraft();
+    A.flash('材料提交成功，已开始 MDT 分析', 'success');
+    location.href = 'web-patient-detail.html?id=' + p.id;
+  });
+
+  renderEntries();
+})();
+</script>
+</body>
+</html>
