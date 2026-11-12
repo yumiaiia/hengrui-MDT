@@ -23,10 +23,16 @@
         <span style="margin-left:auto" class="done-strip" id="p-status">✓ 分析完成</span>
       </div>
       <div class="pc-chips" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap" id="p-chips"></div>
+      <button type="button" class="btn btn-primary btn-sm" id="generate-slides" disabled title="分析完成且有结果后可生成幻灯">生成幻灯</button>
     </div>
   </div>
 
+  <div class="tab-bar slides-result-tabs" id="result-tab-bar">
+    <button type="button" class="tb active" data-tab="analysis" aria-pressed="true">MDT分析结果</button>
+    <button type="button" class="tb" data-tab="slides" aria-pressed="false">幻灯生成记录</button>
+  </div>
   <div id="content"></div>
+  <div id="patient-slides" style="display:none"></div>
 
   <div style="height:96px"></div>
   <div class="btn-footer">
@@ -37,6 +43,8 @@
 <script src="../assets/js/seed-data.js?v=20261109"></script>
 <script src="../assets/js/store.js?v=20261109"></script>
 <script src="../assets/js/app.js?v=20261109"></script>
+<script src="../assets/js/vendor/pptxgenjs.bundle.js?v=20261109"></script>
+<script src="../assets/js/slides.js?v=20261109"></script>
 <script>
 (function () {
   var A = window.HRApp, S = window.HRStore;
@@ -93,12 +101,38 @@
   }
   document.getElementById('content').innerHTML = html;
 
+  document.querySelectorAll('#result-tab-bar .tb').forEach(function (tb) {
+    tb.addEventListener('click', function () {
+      document.querySelectorAll('#result-tab-bar .tb').forEach(function (x) {
+        x.classList.remove('active');
+        x.setAttribute('aria-pressed', 'false');
+      });
+      tb.classList.add('active');
+      tb.setAttribute('aria-pressed', 'true');
+      var showSlides = tb.getAttribute('data-tab') === 'slides';
+      document.getElementById('content').style.display = showSlides ? 'none' : 'block';
+      document.getElementById('patient-slides').style.display = showSlides ? 'block' : 'none';
+    });
+  });
+
+  var generateButton = document.getElementById('generate-slides');
+  generateButton.disabled = !(patient.status === 'completed' && patient.result);
+  generateButton.title = generateButton.disabled ? '分析完成且有结果后可生成幻灯' : '生成病例幻灯';
+  generateButton.addEventListener('click', function () {
+    if (generateButton.disabled) return;
+    window.HRSlides.openGenerate(patient.id, function (record) {
+      document.querySelector('#result-tab-bar .tb[data-tab="slides"]').click();
+    });
+  });
+
   document.getElementById('back-list').addEventListener('click', function () {
     location.href = 'user-patients.html';
   });
   document.getElementById('back-btn').addEventListener('click', function () {
     location.href = 'user-patients.html';
   });
+
+  window.HRSlides.mount(document.getElementById('patient-slides'), { patientId: patient.id, portal: 'user' });
 })();
 </script>
 </body>

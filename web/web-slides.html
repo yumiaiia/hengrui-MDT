@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>幻灯生成记录 · 恒瑞IMDT 医生门户</title>
+<link rel="stylesheet" href="../assets/css/tokens.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/common.css?v=20261109">
+<link rel="stylesheet" href="../assets/css/pages.css?v=20261109">
+</head>
+<body class="web-shell">
+<header class="web-topbar">
+  <div class="brand"><span class="logo-mark"></span><span class="name">恒瑞IMDT</span></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="spacer"></div>
+  <div class="user-box">
+    <span class="tag tag-doctor" id="tb-role">医生</span>
+    <span class="user-name" id="tb-user">—</span>
+    <a href="javascript:void(0)" class="logout-link" id="tb-logout">退出登录</a>
+  </div>
+</header>
+
+<main class="web-main">
+  <div id="slides-list"></div>
+</main>
+
+<script src="../assets/js/seed-data.js?v=20261109"></script>
+<script src="../assets/js/store.js?v=20261109"></script>
+<script src="../assets/js/app.js?v=20261109"></script>
+<script src="../assets/js/vendor/pptxgenjs.bundle.js?v=20261109"></script>
+<script src="../assets/js/slides.js?v=20261109"></script>
+<script>
+(function () {
+  var A = window.HRApp;
+  var user = A.guard('web');
+  if (!user) return;
+  A.webChrome(user, 'slides');
+
+  window.HRSlides.mount(document.getElementById('slides-list'), { portal: 'web' });
+})();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ window.HRStore = (function () {
   var K_PATIENTS = 'hrimdt_patients';
   var K_SESSION = 'hrimdt_session';
   var K_META = 'hrimdt_meta';
+  var K_SLIDES = 'hrimdt_slides_v1';
 
   function read(key, fallback) {
     try {
@@ -20,7 +21,7 @@ window.HRStore = (function () {
     if (localStorage.getItem(K_META) === null) write(K_META, window.HR_SEED.meta);
   }
   function resetAll() {
-    [K_USERS, K_PATIENTS, K_SESSION, K_META].forEach(function (k) { localStorage.removeItem(k); });
+    [K_USERS, K_PATIENTS, K_SESSION, K_META, K_SLIDES].forEach(function (k) { localStorage.removeItem(k); });
     init();
   }
 
@@ -133,6 +134,25 @@ window.HRStore = (function () {
     };
   }
 
+  function listSlides() {
+    var raw = localStorage.getItem(K_SLIDES);
+    return raw === null ? [] : JSON.parse(raw);
+  }
+  function initSlides(records) {
+    if (localStorage.getItem(K_SLIDES) === null) write(K_SLIDES, records);
+  }
+  function saveSlide(record) {
+    var records = listSlides();
+    var index = records.findIndex(function (r) { return r.id === record.id; });
+    if (index < 0) records.unshift(record);
+    else records[index] = record;
+    write(K_SLIDES, records);
+    return record;
+  }
+  function deleteSlide(id) {
+    write(K_SLIDES, listSlides().filter(function (r) { return r.id !== id; }));
+  }
+
   /* ---------- 会话 ---------- */
   function getSession() { return read(K_SESSION, null); }
   function setSession(user) {
@@ -173,6 +193,7 @@ window.HRStore = (function () {
     listPatients: listPatients, getPatientById: getPatientById, listPatientsByCreator: listPatientsByCreator,
     updatePatient: updatePatient, createPatient: createPatient, advanceProgress: advanceProgress,
     statsByCreator: statsByCreator, generateResult: generateResult,
+    listSlides: listSlides, initSlides: initSlides, saveSlide: saveSlide, deleteSlide: deleteSlide,
     getSession: getSession, setSession: setSession, clearSession: clearSession,
     nowStr: nowStr, todayStr: todayStr
   };

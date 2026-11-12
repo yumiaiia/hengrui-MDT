@@ -21,6 +21,8 @@ window.HRApp = (function () {
     shield: function (s) { return svg('<path d="M12 2.5l7.5 3v6c0 4.8-3.2 8.4-7.5 10-4.3-1.6-7.5-5.2-7.5-10v-6z"/><path d="M9 12l2 2 4-4.5"/>', s); },
     users: function (s) { return svg('<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M15.5 5.5a3.5 3.5 0 0 1 0 6.4M17 14.5a6.5 6.5 0 0 1 4.5 5.5"/>', s); },
     folder: function (s) { return svg('<path d="M3 7a2 2 0 0 1 2-2h4l2.5 2.5H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', s); },
+    slides: function (s) { return svg('<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 17v4M8 21h8M7 9h10M7 12h6"/>', s); },
+    download: function (s) { return svg('<path d="M12 3v12M7 10l5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/>', s); },
     heart: function (s) { return svg('<path d="M12 20.5S3.5 15.5 3.5 9.3A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.5 2.9c0 6.2-8.5 11.2-8.5 11.2z"/>', s); },
     kidney: function (s) { return svg('<path d="M6 3.5c3 0 4 2.5 4 5.5s-1 4-1 6.5 1.5 5.5 4 5.5 5-2 5-6c0-5-3-12-9.5-12-1 0-1.8.2-2.5.5z"/>', s); },
     tumor: function (s) { return svg('<circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>', s); },
@@ -377,7 +379,8 @@ window.HRApp = (function () {
   function webChrome(user, active) {
     var nav = document.getElementById('nav');
     if (nav) {
-      nav.innerHTML = '<a href="web-patients.html" class="' + (active === 'patients' ? 'active' : '') + '">患者管理</a>';
+      nav.innerHTML = '<a href="web-patients.html" class="' + (active === 'patients' ? 'active' : '') + '">患者管理</a>' +
+        '<a href="web-slides.html" class="' + (active === 'slides' ? 'active' : '') + '">幻灯生成记录</a>';
     }
     var un = document.getElementById('tb-user');
     if (un) un.textContent = user.name;

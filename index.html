@@ -24,7 +24,7 @@
           <span class="ec-ic mobile" id="ic-mobile"></span>
           <div><div class="ec-t">用户端 · 移动端 H5</div><div class="ec-s">医生使用 · 建议以手机尺寸浏览</div></div>
         </div>
-        <div class="ec-desc">手机号验证码登录（未注册自动进入注册）、患者列表、创建患者、MDT 分析与结果、"我的"页面。医生仅可查看自己创建的患者。</div>
+        <div class="ec-desc">手机号验证码登录（未注册自动进入注册）、患者列表、创建患者、MDT 分析与结果、"我的"页面。</div>
         <div class="ec-demo">演示账号：<b>13900000002</b> 李明华 医生<br>验证码登录 · 任意 6 位数字可用</div>
         <div class="ec-go"><span>进入用户端</span><span id="go-user"></span></div>
       </div>
@@ -34,7 +34,7 @@
           <span class="ec-ic web" id="ic-web"></span>
           <div><div class="ec-t">医生 Web 门户</div><div class="ec-s">医生使用 · 桌面浏览器</div></div>
         </div>
-        <div class="ec-desc">手机号验证码登录（未注册自动进入注册），管理本人患者并可在 Web 创建患者；患者详情含疾病进展时间线、MDT 建议、多系统累及三部分内容。</div>
+        <div class="ec-desc">手机号验证码登录（未注册自动进入注册），管理患者并可在 Web 创建患者；患者详情含疾病进展时间线、MDT 建议、多系统累及三部分内容。</div>
         <div class="ec-demo">演示账号：<b>13900000003</b> 王志强 医生（含示例病例）<br>验证码登录 · 任意 6 位数字可用</div>
         <div class="ec-go"><span>进入 Web 门户</span><span id="go-web"></span></div>
       </div>
@@ -68,7 +68,7 @@
     e.stopPropagation();
     A.confirmModal({
       title: '重置演示数据',
-      body: '将清空本地所有账号、患者与会话数据，并恢复初始演示数据。确定重置吗？',
+      body: '将清空本地所有账号、患者、幻灯生成记录与会话数据，并恢复初始演示数据。确定重置吗？',
       confirmText: '重置',
       danger: true
     }).then(function (ok) {
